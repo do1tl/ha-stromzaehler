@@ -44,6 +44,7 @@ async def async_setup_entry(
 ) -> None:
     """Sensoren anlegen."""
     sensors: list[StromzaehlerBaseSensor] = [
+        PhasenGesamtSensor(entry),
         ZaehlerstandSensor(entry),
         JahresverbrauchSensor(entry),
         EinspeisungSensor(entry),
@@ -131,6 +132,18 @@ class StromzaehlerBaseSensor(SensorEntity):
 
 
 # ── Konkrete Sensoren ─────────────────────────────────────────────────────────
+
+class PhasenGesamtSensor(StromzaehlerBaseSensor):
+    _sensor_key = "phasen_gesamt"
+    _attr_name = "Phasen Gesamt (Bezug)"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_icon = "mdi:sigma"
+
+    @property
+    def native_value(self) -> float:
+        a, b, c = self._bezug()
+        return round(a + b + c, 3)
+
 
 class ZaehlerstandSensor(StromzaehlerBaseSensor):
     _sensor_key = "zaehlerstand"
