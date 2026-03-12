@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stromzähler-Paket für Home Assistant
+# Ablegen unter: config/packages/stromzaehler.yaml
+# In configuration.yaml eintragen:
+#   homeassistant:
+#     packages: !include_dir_named packages
+# ─────────────────────────────────────────────────────────────────────────────
+
+input_number:
+  # Vom Nutzer eingetragener aktueller Zählerstand (kWh)
+  stromzaehler_basis:
+    name: "Zählerstand (eingetragen)"
+    min: 0
+    max: 999999
+    step: 1
+    unit_of_measurement: "kWh"
+    icon: mdi:counter
+    mode: box
+
+  # Interner Speicher: Summe der 3 Phasen zum Zeitpunkt der Eingabe
+  stromzaehler_shelly_offset:
+    name: "Zählerstand Offset (intern)"
+    min: 0
+    max: 9999999
+    step: 0.001
+    unit_of_measurement: "kWh"
+    icon: mdi:cog
+
+template:
+  - sensor:
+      - name: "Zählerstand aktuell"
+        unique_id: stromzaehler_aktuell
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:lightning-bolt
+        state: >
+          {% set basis   = states('input_number.stromzaehler_basis') | float(0) %}
+          {% set offset  = states('input_number.stromzaehler_shelly_offset') | float(0) %}
+          {% set phase_a = states('sensor.phase_a_energie') | float(0) %}
+          {% set phase_b = states('sensor.phase_b_energie') | float(0) %}
+          {% set phase_c = states('sensor.phase_c_energie') | float(0) %}
+          {% set shelly_now = phase_a + phase_b + phase_c %}
+          {{ [basis + shelly_now - offset, basis] | max | round(3) }}
+
+      - name: "Jahresverbrauch bisher"
+        unique_id: stromzaehler_jahresverbrauch
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: measurement
+        icon: mdi:calendar-month
+        state: >
+          {% set offset  = states('input_number.stromzaehler_shelly_offset') | float(0) %}
+          {% set phase_a = states('sensor.phase_a_energie') | float(0) %}
+          {% set phase_b = states('sensor.phase_b_energie') | float(0) %}
+          {% set phase_c = states('sensor.phase_c_energie') | float(0) %}
+          {% set shelly_now = phase_a + phase_b + phase_c %}
+          {{ [shelly_now - offset, 0] | max | round(3) }}
+
+automation:
+  - alias: "Zählerstand – Offset beim Eintragen speichern"
+    id: stromzaehler_offset_speichern
+    description: >
+      Wird ausgelöst sobald der Nutzer einen neuen Zählerstand einträgt.
+      Speichert den aktuellen Shelly-Wert als Referenzpunkt.
+    trigger:
+      - platform: state
+        entity_id: input_number.stromzaehler_basis
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.stromzaehler_shelly_offset
+        data:
+          value: >
+            {% set phase_a = states('sensor.phase_a_energie') | float(0) %}
+            {% set phase_b = states('sensor.phase_b_energie') | float(0) %}
+            {% set phase_c = states('sensor.phase_c_energie') | float(0) %}
+            {{ (phase_a + phase_b + phase_c) | round(3) }}
+    mode: single

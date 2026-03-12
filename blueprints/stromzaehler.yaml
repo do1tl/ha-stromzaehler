@@ -1,0 +1,84 @@
+blueprint:
+  name: "Virtueller Stromzähler (3-Phasen)"
+  description: >
+    Erstellt einen virtuellen Stromzähler der einen manuell eingetragenen
+    Zählerstand mit dem laufenden Verbrauch aus 3 wählbaren Energie-Sensoren
+    kombiniert. Funktioniert mit Shelly 3EM, Eastron SDM, Victron und allen
+    anderen Sensoren mit device_class: energy.
+
+    **Einmalige Einrichtung:**
+
+    1. Zwei input_number Helper anlegen (Einstellungen → Geräte & Dienste → Helfer):
+       - "Zählerstand Basis" (min: 0, max: 999999, Schrittweite: 1, Einheit: kWh)
+       - "Zählerstand Offset intern" (min: 0, max: 9999999, Schrittweite: 0.001, Einheit: kWh)
+
+    2. Diesen Blueprint ausführen und die 3 Phasen-Sensoren + beide Helfer auswählen.
+
+    3. Template-Sensoren aus der README anlegen.
+
+    4. Aktuellen Zählerstand im Helper eintragen → fertig!
+
+    **Jährlicher Reset:** Einfach neuen Zählerstand eintragen.
+
+  domain: automation
+  source_url: https://github.com/do1tl/ha-stromzaehler/blob/main/blueprints/stromzaehler.yaml
+
+  input:
+    sensor_phase_a:
+      name: "Energie-Sensor Phase L1"
+      description: "Energie-Sensor der ersten Phase (muss device_class: energy haben, Einheit: kWh)"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_phase_b:
+      name: "Energie-Sensor Phase L2"
+      description: "Energie-Sensor der zweiten Phase (muss device_class: energy haben, Einheit: kWh)"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_phase_c:
+      name: "Energie-Sensor Phase L3"
+      description: "Energie-Sensor der dritten Phase (muss device_class: energy haben, Einheit: kWh)"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    helper_basis:
+      name: "Helper: Zählerstand Basis"
+      description: "input_number Helper in dem du deinen Zählerstand einträgst"
+      selector:
+        entity:
+          domain: input_number
+
+    helper_offset:
+      name: "Helper: Zählerstand Offset (intern)"
+      description: "Zweiter input_number Helper – wird automatisch befüllt, nicht manuell ändern"
+      selector:
+        entity:
+          domain: input_number
+
+# ── Automation ────────────────────────────────────────────────────────────────
+alias: "Stromzähler – Offset aktualisieren"
+description: "Speichert den aktuellen Zählerwert der Sensoren sobald ein neuer Zählerstand eingetragen wird."
+
+trigger:
+  - platform: state
+    entity_id: !input helper_basis
+
+action:
+  - service: input_number.set_value
+    target:
+      entity_id: !input helper_offset
+    data:
+      value: >
+        {% set a = states(!input sensor_phase_a) | float(0) %}
+        {% set b = states(!input sensor_phase_b) | float(0) %}
+        {% set c = states(!input sensor_phase_c) | float(0) %}
+        {{ (a + b + c) | round(3) }}
+
+mode: single

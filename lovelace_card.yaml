@@ -1,0 +1,21 @@
+type: vertical-stack
+cards:
+  - type: entities
+    title: "Stromzähler"
+    icon: mdi:lightning-bolt
+    entities:
+      - entity: sensor.zahlerstand_aktuell
+        name: "Aktueller Zählerstand"
+      - entity: sensor.jahresverbrauch_bisher
+        name: "Jahresverbrauch bisher"
+      - type: divider
+      - entity: input_number.stromzaehler_basis
+        name: "Zählerstand eintragen (kWh)"
+
+  - type: statistic
+    entity: sensor.zahlerstand_aktuell
+    name: "Verlauf Zählerstand"
+    period:
+      calendar:
+        period: month
+    stat_type: max

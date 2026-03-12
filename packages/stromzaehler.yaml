@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stromzähler Package – Template-Sensoren
+# Ablegen unter: config/packages/stromzaehler.yaml
+#
+# Vorher anpassen:
+#   - sensor.PHASE_A_HIER  → Entity-ID deines L1 Energie-Sensors
+#   - sensor.PHASE_B_HIER  → Entity-ID deines L2 Energie-Sensors
+#   - sensor.PHASE_C_HIER  → Entity-ID deines L3 Energie-Sensors
+#
+# In configuration.yaml eintragen (falls noch nicht vorhanden):
+#   homeassistant:
+#     packages: !include_dir_named packages
+# ─────────────────────────────────────────────────────────────────────────────
+
+template:
+  - sensor:
+      - name: "Zählerstand aktuell"
+        unique_id: stromzaehler_aktuell
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:lightning-bolt
+        state: >
+          {% set basis  = states('input_number.stromzaehler_basis') | float(0) %}
+          {% set offset = states('input_number.stromzaehler_offset') | float(0) %}
+          {% set a = states('sensor.PHASE_A_HIER') | float(0) %}
+          {% set b = states('sensor.PHASE_B_HIER') | float(0) %}
+          {% set c = states('sensor.PHASE_C_HIER') | float(0) %}
+          {{ [basis + (a + b + c) - offset, basis] | max | round(3) }}
+
+      - name: "Jahresverbrauch bisher"
+        unique_id: stromzaehler_jahresverbrauch
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: measurement
+        icon: mdi:calendar-month
+        state: >
+          {% set offset = states('input_number.stromzaehler_offset') | float(0) %}
+          {% set a = states('sensor.PHASE_A_HIER') | float(0) %}
+          {% set b = states('sensor.PHASE_B_HIER') | float(0) %}
+          {% set c = states('sensor.PHASE_C_HIER') | float(0) %}
+          {{ [(a + b + c) - offset, 0] | max | round(3) }}

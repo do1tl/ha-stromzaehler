@@ -1,0 +1,75 @@
+blueprint:
+  name: "Stromzähler mit 3-Phasen-Sensor"
+  description: >
+    Richtet einen virtuellen Stromzähler ein, der einen manuell eingetragenen
+    Zählerstand mit dem laufenden Verbrauch aus 3 wählbaren Energie-Sensoren
+    (z.B. Shelly 3EM, Eastron SDM, etc.) kombiniert.
+
+    **Einmalige Einrichtung:**
+    1. Diesen Blueprint ausführen und die 3 Phasen-Sensoren auswählen.
+    2. Aktuellen Zählerstand im Helper "Zählerstand (eingetragen)" eintragen.
+    3. Ab sofort wird der Verbrauch automatisch weiter gezählt.
+
+    **Jährlicher Reset:**
+    Einfach den neuen Zählerstand in den Helper eintragen – der Offset wird automatisch neu gesetzt.
+
+  domain: automation
+  input:
+    sensor_phase_a:
+      name: "Energie-Sensor Phase L1"
+      description: "Energie-Sensor der ersten Phase in kWh"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_phase_b:
+      name: "Energie-Sensor Phase L2"
+      description: "Energie-Sensor der zweiten Phase in kWh"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_phase_c:
+      name: "Energie-Sensor Phase L3"
+      description: "Energie-Sensor der dritten Phase in kWh"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    zählerstand_input:
+      name: "Zählerstand Helper (input_number)"
+      description: "Der input_number Helper, in dem du deinen aktuellen Zählerstand einträgst."
+      selector:
+        entity:
+          domain: input_number
+
+    offset_input:
+      name: "Offset Helper (input_number, intern)"
+      description: "Ein zweiter input_number Helper der intern den Referenzwert speichert (nicht manuell bearbeiten)."
+      selector:
+        entity:
+          domain: input_number
+
+# ── Automation ────────────────────────────────────────────────────────────────
+alias: "Stromzähler – Offset aktualisieren"
+description: "Speichert den Shelly-Gesamtwert sobald ein neuer Zählerstand eingetragen wird."
+
+trigger:
+  - platform: state
+    entity_id: !input zählerstand_input
+
+action:
+  - service: input_number.set_value
+    target:
+      entity_id: !input offset_input
+    data:
+      value: >
+        {% set a = states(!input sensor_phase_a) | float(0) %}
+        {% set b = states(!input sensor_phase_b) | float(0) %}
+        {% set c = states(!input sensor_phase_c) | float(0) %}
+        {{ (a + b + c) | round(3) }}
+
+mode: single
