@@ -1,70 +1,104 @@
 blueprint:
-  name: "Virtueller Stromzähler (3-Phasen)"
+  name: "Virtueller Stromzähler (3-Phasen + Solar + Batterie)"
   description: >
-    Erstellt einen virtuellen Stromzähler der einen manuell eingetragenen
-    Zählerstand mit dem laufenden Verbrauch aus 3 wählbaren Energie-Sensoren
-    kombiniert. Funktioniert mit Shelly 3EM, Eastron SDM, Victron und allen
-    anderen Sensoren mit device_class: energy.
+    Vollständige Energiebilanz mit manuellem Zählerstand, 3-Phasen-Sensor,
+    Solaranlage (z.B. Hoymiles) und optionalem Batteriespeicher (z.B. Victron).
+
+    **Berechnete Sensoren nach Installation:**
+    - Zählerstand aktuell (kWh)
+    - Jahresverbrauch Bezug (vom Netz)
+    - Jahreseinspeisung (ins Netz)
+    - Solar Eigenverbrauch (selbst genutzter Solarstrom)
+    - Eingespart gesamt (Solar + Batterie Eigenverbrauch)
 
     **Einmalige Einrichtung:**
 
-    1. Zwei input_number Helper anlegen (Einstellungen → Geräte & Dienste → Helfer):
-       - "Zählerstand Basis" (min: 0, max: 999999, Schrittweite: 1, Einheit: kWh)
-       - "Zählerstand Offset intern" (min: 0, max: 9999999, Schrittweite: 0.001, Einheit: kWh)
+    1. Zwei input_number Helper anlegen (Einstellungen → Helfer → Zahl):
+       - Name: "Zählerstand Basis" | Entity-ID: input_number.stromzaehler_basis
+         Min: 0 | Max: 999999 | Schrittweite: 1 | Einheit: kWh
+       - Name: "Zählerstand Offset intern" | Entity-ID: input_number.stromzaehler_offset
+         Min: 0 | Max: 9999999 | Schrittweite: 0.001 | Einheit: kWh
 
-    2. Diesen Blueprint ausführen und die 3 Phasen-Sensoren + beide Helfer auswählen.
+    2. Diesen Blueprint als Automation anlegen und alle Sensoren auswählen.
 
-    3. Template-Sensoren aus der README anlegen.
+    3. Package-Datei aus dem GitHub-Repo in config/packages/ ablegen und
+       die Sensor-IDs anpassen (siehe README).
 
-    4. Aktuellen Zählerstand im Helper eintragen → fertig!
+    4. Aktuellen Zählerstand eintragen → fertig!
 
-    **Jährlicher Reset:** Einfach neuen Zählerstand eintragen.
+    **Jährlicher Reset:** Neuen Zählerstand eintragen, Offset wird automatisch gesetzt.
 
   domain: automation
   source_url: https://github.com/do1tl/ha-stromzaehler/blob/main/blueprints/stromzaehler.yaml
 
   input:
     sensor_phase_a:
-      name: "Energie-Sensor Phase L1"
-      description: "Energie-Sensor der ersten Phase (muss device_class: energy haben, Einheit: kWh)"
+      name: "Phase L1 – Energie-Sensor"
+      description: "Energie-Sensor Phase L1 (kWh, device_class: energy). Bei Shelly 3EM z.B. sensor.shelly3em_channel_a_energy"
       selector:
         entity:
           domain: sensor
           device_class: energy
 
     sensor_phase_b:
-      name: "Energie-Sensor Phase L2"
-      description: "Energie-Sensor der zweiten Phase (muss device_class: energy haben, Einheit: kWh)"
+      name: "Phase L2 – Energie-Sensor"
+      description: "Energie-Sensor Phase L2 (kWh, device_class: energy)"
       selector:
         entity:
           domain: sensor
           device_class: energy
 
     sensor_phase_c:
-      name: "Energie-Sensor Phase L3"
-      description: "Energie-Sensor der dritten Phase (muss device_class: energy haben, Einheit: kWh)"
+      name: "Phase L3 – Energie-Sensor"
+      description: "Energie-Sensor Phase L3 (kWh, device_class: energy)"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_solar:
+      name: "Solar – Gesamtproduktion (z.B. Hoymiles)"
+      description: "Kumulativer Energie-Sensor der Solaranlage in kWh. Bei Hoymiles z.B. sensor.hoymiles_total_production"
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_batterie_laden:
+      name: "Batterie – Lade-Energie (optional, z.B. Victron)"
+      description: "Kumulativer Sensor für Energie die IN die Batterie geladen wurde (kWh). Leer lassen wenn nicht vorhanden."
+      default: {}
+      selector:
+        entity:
+          domain: sensor
+          device_class: energy
+
+    sensor_batterie_entladen:
+      name: "Batterie – Entlade-Energie (optional, z.B. Victron)"
+      description: "Kumulativer Sensor für Energie die AUS der Batterie entnommen wurde (kWh). Leer lassen wenn nicht vorhanden."
+      default: {}
       selector:
         entity:
           domain: sensor
           device_class: energy
 
     helper_basis:
-      name: "Helper: Zählerstand Basis"
-      description: "input_number Helper in dem du deinen Zählerstand einträgst"
+      name: "Helper: Zählerstand Basis (input_number)"
+      description: "input_number in dem du deinen aktuellen Zählerstand einträgst (input_number.stromzaehler_basis)"
       selector:
         entity:
           domain: input_number
 
     helper_offset:
-      name: "Helper: Zählerstand Offset (intern)"
-      description: "Zweiter input_number Helper – wird automatisch befüllt, nicht manuell ändern"
+      name: "Helper: Zählerstand Offset intern (input_number)"
+      description: "Zweiter input_number für den internen Referenzwert – wird automatisch gesetzt, nicht manuell ändern (input_number.stromzaehler_offset)"
       selector:
         entity:
           domain: input_number
 
 # ── Automation ────────────────────────────────────────────────────────────────
 alias: "Stromzähler – Offset aktualisieren"
-description: "Speichert den aktuellen Zählerwert der Sensoren sobald ein neuer Zählerstand eingetragen wird."
+description: "Speichert den aktuellen Phasenwert sobald ein neuer Zählerstand eingetragen wird."
 
 trigger:
   - platform: state
@@ -79,6 +113,6 @@ action:
         {% set a = states(!input sensor_phase_a) | float(0) %}
         {% set b = states(!input sensor_phase_b) | float(0) %}
         {% set c = states(!input sensor_phase_c) | float(0) %}
-        {{ (a + b + c) | round(3) }}
+        {{ ([a, 0] | max + [b, 0] | max + [c, 0] | max) | round(3) }}
 
 mode: single
