@@ -39,7 +39,17 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         if user_input is not None:
             self._data = dict(user_input)
-            self._data[CONF_PHASE_OFFSET] = 0.0
+            # Aktuellen Phasenstand als Offset speichern → Zählerstand startet bei meter_basis
+            offset = 0.0
+            for key in (CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C):
+                state = self.hass.states.get(user_input.get(key, ""))
+                if state is None or state.state in ("unknown", "unavailable"):
+                    continue
+                try:
+                    offset += max(0.0, float(state.state))
+                except (ValueError, TypeError):
+                    pass
+            self._data[CONF_PHASE_OFFSET] = round(offset, 3)
             return await self.async_step_einspeisung()
 
         return self.async_show_form(
