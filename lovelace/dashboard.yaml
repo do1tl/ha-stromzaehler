@@ -1,0 +1,58 @@
+views:
+  - title: Stromzähler
+    path: stromzaehler
+    icon: mdi:counter
+    cards:
+      - type: vertical-stack
+        cards:
+          # ── Zählerstand & Jahresverbrauch ────────────────────────────────────
+          - type: entities
+            title: "Stromzähler"
+            icon: mdi:counter
+            entities:
+              - entity: sensor.zahlerstand_aktuell
+                name: "Aktueller Zählerstand"
+                icon: mdi:counter
+              - entity: sensor.jahresverbrauch_bezug
+                name: "Jahresverbrauch (Bezug)"
+                icon: mdi:transmission-tower-import
+              - type: divider
+              - entity: input_number.stromzaehler_basis
+                name: "Neuen Zählerstand eintragen (kWh)"
+                icon: mdi:pencil
+
+          # ── Solar & Einspeisung ──────────────────────────────────────────────
+          - type: entities
+            title: "Solar & Einspeisung"
+            icon: mdi:solar-power
+            entities:
+              - entity: sensor.einspeisung_gesamt
+                name: "Eingespeist ins Netz"
+                icon: mdi:transmission-tower-export
+              - entity: sensor.solar_eigenverbrauch
+                name: "Solar Eigenverbrauch"
+                icon: mdi:solar-power
+              - entity: sensor.batterie_eigenverbrauch
+                name: "Batterie Eigenverbrauch"
+                icon: mdi:battery-charging
+              - type: divider
+              - entity: sensor.eingespart_gesamt
+                name: "Eingespart gesamt"
+                icon: mdi:piggy-bank
+
+          # ── Verlauf ──────────────────────────────────────────────────────────
+          - type: statistics-graph
+            title: "Monatsverlauf"
+            entities:
+              - entity: sensor.jahresverbrauch_bezug
+                name: "Bezug"
+              - entity: sensor.einspeisung_gesamt
+                name: "Einspeisung"
+              - entity: sensor.eingespart_gesamt
+                name: "Eingespart"
+            period:
+              calendar:
+                period: month
+            stat_types:
+              - max
+            chart_type: bar
