@@ -3,28 +3,37 @@
     "step": {
       "user": {
         "title": "Phasen-Sensoren & Zählerstand",
-        "description": "Wähle die 3 Energie-Sensoren deines Stromzählers (z.B. Shelly 3EM) und trage den aktuellen Zählerstand ein.",
+        "description": "Wähle die 3 Bezugs-Energie-Sensoren deines Stromzählers (z.B. Shelly 3EM channel_energy) und trage den aktuellen Zählerstand ein.",
         "data": {
-          "phase_a": "Phase L1 – Energie-Sensor (kWh)",
-          "phase_b": "Phase L2 – Energie-Sensor (kWh)",
-          "phase_c": "Phase L3 – Energie-Sensor (kWh)",
+          "phase_a": "Phase L1 – Bezug (kWh)",
+          "phase_b": "Phase L2 – Bezug (kWh)",
+          "phase_c": "Phase L3 – Bezug (kWh)",
           "meter_basis": "Aktueller Zählerstand (kWh)"
+        }
+      },
+      "einspeisung": {
+        "title": "Einspeisung ins Netz (optional)",
+        "description": "Nur nötig wenn dein Stromzähler getrennte Einspeise-Sensoren hat (z.B. Shelly 3EM channel_energy_returned). Leer lassen wenn der Phasen-Sensor negative Werte bei Einspeisung liefert.",
+        "data": {
+          "phase_a_returned": "Phase L1 – Einspeisung (kWh)",
+          "phase_b_returned": "Phase L2 – Einspeisung (kWh)",
+          "phase_c_returned": "Phase L3 – Einspeisung (kWh)"
         }
       },
       "solar": {
         "title": "Solaranlage (optional)",
-        "description": "Wähle den Produktionssensor deiner Solaranlage (z.B. Hoymiles Gesamtproduktion). Leer lassen falls nicht vorhanden.",
+        "description": "Gesamtertrag deiner Solaranlage oder Batterie-Wechselrichters (z.B. Hoymiles YieldTotal). Leer lassen falls nicht vorhanden.",
         "data": {
           "solar": "Solar Gesamtproduktion (kWh)"
         }
       },
       "battery": {
         "title": "Batteriespeicher (optional)",
-        "description": "Zwei Varianten: A) Netto-Sensor (+ = Laden, − = Entladen, z.B. JBD BMS) – Mehrfachauswahl für mehrere Akkus. B) Separate Lade/Entlade-Sensoren (z.B. Victron). Wh wird automatisch in kWh umgerechnet. Alles leer lassen falls kein Akku vorhanden.",
+        "description": "Variante A: Netto-Sensor mit +Laden/−Entladen (z.B. JBD BMS), Mehrfachauswahl möglich. Variante B: Separate Lade- und Entlade-Sensoren. Wh wird automatisch umgerechnet. Leer lassen falls kein Speicher vorhanden.",
         "data": {
-          "battery_net": "A) Batterie Netto-Energie (Wh/kWh, +Laden/−Entladen) – Mehrfachauswahl",
-          "battery_charge": "B) Batterie Lade-Energie (kWh) – Mehrfachauswahl möglich",
-          "battery_discharge": "B) Batterie Entlade-Energie (kWh) – Mehrfachauswahl möglich"
+          "battery_net": "A) Batterie Netto-Energie (+Laden/−Entladen) – Mehrfachauswahl",
+          "battery_charge": "B) Batterie Lade-Energie (kWh) – Mehrfachauswahl",
+          "battery_discharge": "B) Batterie Entlade-Energie (kWh) – Mehrfachauswahl"
         }
       }
     }

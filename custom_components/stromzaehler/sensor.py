@@ -17,6 +17,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from .const import (
     DOMAIN,
     CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C,
+    CONF_PHASE_A_RETURNED, CONF_PHASE_B_RETURNED, CONF_PHASE_C_RETURNED,
     CONF_SOLAR, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE, CONF_BATT_NET,
     CONF_METER_BASIS, CONF_PHASE_OFFSET,
 )
@@ -41,7 +42,7 @@ def _val(hass: HomeAssistant, entity_id: str | None) -> float:
 
 
 def _val_list(hass: HomeAssistant, entity_ids: list | str | None) -> float:
-    """Summe über eine Liste von Entity-IDs (oder einzelne ID für Rückwärtskompatibilität)."""
+    """Summe über eine Liste von Entity-IDs (oder einzelne ID, rückwärtskompatibel)."""
     if not entity_ids:
         return 0.0
     if isinstance(entity_ids, str):
@@ -102,11 +103,15 @@ class StromzaehlerBaseSensor(SensorEntity):
         raise NotImplementedError
 
     def _tracked_entities(self) -> list[str]:
-        return [
+        entities = [
             self._entry.data[CONF_PHASE_A],
             self._entry.data[CONF_PHASE_B],
             self._entry.data[CONF_PHASE_C],
         ]
+        for key in (CONF_PHASE_A_RETURNED, CONF_PHASE_B_RETURNED, CONF_PHASE_C_RETURNED):
+            if self._entry.data.get(key):
+                entities.append(self._entry.data[key])
+        return entities
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(
@@ -130,21 +135,33 @@ class StromzaehlerBaseSensor(SensorEntity):
 
     # ── Hilfsmethoden ─────────────────────────────────────────────────────────
 
-    def _bezug(self) -> tuple[float, float, float]:
-        """Positive Phasenwerte = Bezug vom Netz."""
-        return (
-            max(0.0, _val(self.hass, self._entry.data[CONF_PHASE_A])),
-            max(0.0, _val(self.hass, self._entry.data[CONF_PHASE_B])),
-            max(0.0, _val(self.hass, self._entry.data[CONF_PHASE_C])),
+    def _bezug(self) -> float:
+        """Netzbezug in kWh. Immer positive Phasenwerte summiert."""
+        return sum(
+            max(0.0, _val(self.hass, self._entry.data[k]))
+            for k in (CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C)
         )
 
-    def _einspeisung(self) -> tuple[float, float, float]:
-        """Negative Phasenwerte als positive Zahlen = Einspeisung ins Netz."""
-        return (
-            max(0.0, _val(self.hass, self._entry.data[CONF_PHASE_A]) * -1),
-            max(0.0, _val(self.hass, self._entry.data[CONF_PHASE_B]) * -1),
-            max(0.0, _val(self.hass, self._entry.data[CONF_PHASE_C]) * -1),
+    def _einspeisung(self) -> float:
+        """
+        Einspeisung ins Netz in kWh (positiver Wert).
+        Wenn separate 'energy_returned' Sensoren konfiguriert: diese summieren.
+        Sonst: negative Phasenwerte (bidirektionaler Sensor) invertieren.
+        """
+        returned_keys = (
+            (CONF_PHASE_A_RETURNED, CONF_PHASE_A),
+            (CONF_PHASE_B_RETURNED, CONF_PHASE_B),
+            (CONF_PHASE_C_RETURNED, CONF_PHASE_C),
         )
+        total = 0.0
+        for ret_key, phase_key in returned_keys:
+            if self._entry.data.get(ret_key):
+                # Separater Einspeise-Sensor (z.B. Shelly energy_returned)
+                total += max(0.0, _val(self.hass, self._entry.data[ret_key]))
+            else:
+                # Fallback: negative Werte des Phasen-Sensors
+                total += max(0.0, _val(self.hass, self._entry.data[phase_key]) * -1)
+        return total
 
 
 # ── Konkrete Sensoren ─────────────────────────────────────────────────────────
@@ -157,8 +174,7 @@ class PhasenGesamtSensor(StromzaehlerBaseSensor):
 
     @property
     def native_value(self) -> float:
-        a, b, c = self._bezug()
-        return round(a + b + c, 3)
+        return round(self._bezug(), 3)
 
 
 class ZaehlerstandSensor(StromzaehlerBaseSensor):
@@ -171,8 +187,8 @@ class ZaehlerstandSensor(StromzaehlerBaseSensor):
     def native_value(self) -> float:
         basis  = self._entry.data.get(CONF_METER_BASIS, 0.0)
         offset = self._entry.data.get(CONF_PHASE_OFFSET, 0.0)
-        a, b, c = self._bezug()
-        return round(max(basis + (a + b + c) - offset, basis), 3)
+        bezug  = self._bezug()
+        return round(max(basis + bezug - offset, basis), 3)
 
 
 class JahresverbrauchSensor(StromzaehlerBaseSensor):
@@ -184,8 +200,7 @@ class JahresverbrauchSensor(StromzaehlerBaseSensor):
     @property
     def native_value(self) -> float:
         offset = self._entry.data.get(CONF_PHASE_OFFSET, 0.0)
-        a, b, c = self._bezug()
-        return round(max((a + b + c) - offset, 0.0), 3)
+        return round(max(self._bezug() - offset, 0.0), 3)
 
 
 class EinspeisungSensor(StromzaehlerBaseSensor):
@@ -196,8 +211,7 @@ class EinspeisungSensor(StromzaehlerBaseSensor):
 
     @property
     def native_value(self) -> float:
-        a, b, c = self._einspeisung()
-        return round(a + b + c, 3)
+        return round(self._einspeisung(), 3)
 
 
 class SolarEigenverbrauchSensor(StromzaehlerBaseSensor):
@@ -215,8 +229,7 @@ class SolarEigenverbrauchSensor(StromzaehlerBaseSensor):
     @property
     def native_value(self) -> float:
         solar = _val(self.hass, self._entry.data.get(CONF_SOLAR))
-        a, b, c = self._einspeisung()
-        return round(max(solar - (a + b + c), 0.0), 3)
+        return round(max(solar - self._einspeisung(), 0.0), 3)
 
 
 class EingespartSensor(StromzaehlerBaseSensor):
@@ -240,13 +253,10 @@ class EingespartSensor(StromzaehlerBaseSensor):
     @property
     def native_value(self) -> float:
         solar = _val(self.hass, self._entry.data.get(CONF_SOLAR))
-        a, b, c = self._einspeisung()
-        eigenverbrauch = max(solar - (a + b + c), 0.0)
-        # Entladung aus Netto- oder separatem Sensor
+        eigenverbrauch = max(solar - self._einspeisung(), 0.0)
         net_ids = self._entry.data.get(CONF_BATT_NET)
         if net_ids:
-            net = _val_list(self.hass, net_ids)
-            batt_discharge = max(-net, 0.0)
+            batt_discharge = max(-_val_list(self.hass, net_ids), 0.0)
         else:
             batt_discharge = _val_list(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
         return round(eigenverbrauch + batt_discharge, 3)
@@ -260,15 +270,7 @@ class BatterieEigenverbrauchSensor(StromzaehlerBaseSensor):
 
     def _tracked_entities(self) -> list[str]:
         entities = []
-        # Netto-Sensoren (+ Laden, − Entladen)
-        net = self._entry.data.get(CONF_BATT_NET)
-        if net:
-            if isinstance(net, list):
-                entities.extend(net)
-            else:
-                entities.append(net)
-        # Separate Lade/Entlade-Sensoren
-        for key in (CONF_BATT_CHARGE, CONF_BATT_DISCHARGE):
+        for key in (CONF_BATT_NET, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE):
             val = self._entry.data.get(key)
             if not val:
                 continue
@@ -279,10 +281,9 @@ class BatterieEigenverbrauchSensor(StromzaehlerBaseSensor):
         return entities
 
     def _batt_charge_discharge(self) -> tuple[float, float]:
-        """Gibt (Ladung, Entladung) in kWh zurück – aus Netto- oder separaten Sensoren."""
+        """Gibt (Ladung, Entladung) in kWh zurück."""
         net_ids = self._entry.data.get(CONF_BATT_NET)
         if net_ids:
-            # Netto: positive Werte = Laden, negative = Entladen
             net = _val_list(self.hass, net_ids)
             return (max(net, 0.0), max(-net, 0.0))
         charge    = _val_list(self.hass, self._entry.data.get(CONF_BATT_CHARGE))

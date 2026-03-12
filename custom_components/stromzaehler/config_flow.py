@@ -9,6 +9,7 @@ from homeassistant.helpers import selector
 from .const import (
     DOMAIN,
     CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C,
+    CONF_PHASE_A_RETURNED, CONF_PHASE_B_RETURNED, CONF_PHASE_C_RETURNED,
     CONF_SOLAR, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE, CONF_BATT_NET,
     CONF_METER_BASIS, CONF_PHASE_OFFSET,
 )
@@ -39,7 +40,7 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._data = dict(user_input)
             self._data[CONF_PHASE_OFFSET] = 0.0
-            return await self.async_step_solar()
+            return await self.async_step_einspeisung()
 
         return self.async_show_form(
             step_id="user",
@@ -51,7 +52,24 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }),
         )
 
-    # ── Schritt 2: Solar (optional) ───────────────────────────────────────────
+    # ── Schritt 2: Einspeisung (optional, für Shelly 3EM etc.) ───────────────
+    async def async_step_einspeisung(self, user_input=None):
+        if user_input is not None:
+            for key in (CONF_PHASE_A_RETURNED, CONF_PHASE_B_RETURNED, CONF_PHASE_C_RETURNED):
+                if user_input.get(key):
+                    self._data[key] = user_input[key]
+            return await self.async_step_solar()
+
+        return self.async_show_form(
+            step_id="einspeisung",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_PHASE_A_RETURNED): _ENERGY_SELECTOR,
+                vol.Optional(CONF_PHASE_B_RETURNED): _ENERGY_SELECTOR,
+                vol.Optional(CONF_PHASE_C_RETURNED): _ENERGY_SELECTOR,
+            }),
+        )
+
+    # ── Schritt 3: Solar (optional) ───────────────────────────────────────────
     async def async_step_solar(self, user_input=None):
         if user_input is not None:
             if user_input.get(CONF_SOLAR):
@@ -65,7 +83,7 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }),
         )
 
-    # ── Schritt 3: Batterie (optional) ────────────────────────────────────────
+    # ── Schritt 4: Batterie (optional) ────────────────────────────────────────
     async def async_step_battery(self, user_input=None):
         if user_input is not None:
             if user_input.get(CONF_BATT_NET):
@@ -104,7 +122,7 @@ class StromzaehlerOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             value = float(user_input[CONF_METER_BASIS])
 
-            # Aktuelle Phasensumme als neuen Offset speichern
+            # Aktuelle Bezugs-Phasensumme als neuen Offset speichern
             offset = 0.0
             for key in (CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C):
                 entity_id = self._entry.data.get(key, "")
