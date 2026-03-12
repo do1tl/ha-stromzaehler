@@ -1,0 +1,18 @@
+set_meter_reading:
+  name: Zählerstand setzen
+  description: >
+    Setzt einen neuen Zählerstand und speichert den aktuellen Phasenwert als
+    internen Referenzpunkt. Kann auch in Automationen verwendet werden.
+  fields:
+    value:
+      name: Zählerstand
+      description: Neuer Zählerstand in kWh (vom physischen Zähler ablesen)
+      required: true
+      example: 12345
+      selector:
+        number:
+          min: 0
+          max: 999999
+          step: 1
+          unit_of_measurement: kWh
+          mode: box

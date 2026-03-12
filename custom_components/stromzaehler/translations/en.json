@@ -1,0 +1,54 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Phasen-Sensoren & Zählerstand",
+        "description": "Wähle die 3 Energie-Sensoren deines Stromzählers (z.B. Shelly 3EM) und trage den aktuellen Zählerstand ein.",
+        "data": {
+          "phase_a": "Phase L1 – Energie-Sensor (kWh)",
+          "phase_b": "Phase L2 – Energie-Sensor (kWh)",
+          "phase_c": "Phase L3 – Energie-Sensor (kWh)",
+          "meter_basis": "Aktueller Zählerstand (kWh)"
+        }
+      },
+      "solar": {
+        "title": "Solaranlage (optional)",
+        "description": "Wähle den Produktionssensor deiner Solaranlage (z.B. Hoymiles Gesamtproduktion). Leer lassen falls nicht vorhanden.",
+        "data": {
+          "solar": "Solar Gesamtproduktion (kWh)"
+        }
+      },
+      "battery": {
+        "title": "Batteriespeicher (optional)",
+        "description": "Wähle die Lade- und Entlade-Sensoren deines Batteriespeichers (z.B. Victron). Beide Felder leer lassen falls nicht vorhanden.",
+        "data": {
+          "battery_charge": "Batterie Lade-Energie (kWh)",
+          "battery_discharge": "Batterie Entlade-Energie (kWh)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zählerstand aktualisieren",
+        "description": "Trage den aktuellen Stand deines physischen Stromzählers ein. Der interne Referenzwert wird automatisch neu gesetzt.",
+        "data": {
+          "meter_basis": "Neuer Zählerstand (kWh)"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_meter_reading": {
+      "name": "Zählerstand setzen",
+      "description": "Setzt einen neuen Zählerstand und aktualisiert den internen Referenzwert.",
+      "fields": {
+        "value": {
+          "name": "Zählerstand",
+          "description": "Neuer Zählerstand in kWh"
+        }
+      }
+    }
+  }
+}
