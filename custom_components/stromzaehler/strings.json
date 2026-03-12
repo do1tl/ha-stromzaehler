@@ -20,10 +20,11 @@
       },
       "battery": {
         "title": "Batteriespeicher (optional)",
-        "description": "Wähle die Lade- und Entlade-Sensoren deiner Batteriespeicher. Mehrere BMS/Akkus möglich – alle auswählen, sie werden summiert. Leer lassen falls nicht vorhanden.",
+        "description": "Zwei Varianten: A) Netto-Sensor (+ = Laden, − = Entladen, z.B. JBD BMS) – Mehrfachauswahl für mehrere Akkus. B) Separate Lade/Entlade-Sensoren (z.B. Victron). Wh wird automatisch in kWh umgerechnet. Alles leer lassen falls kein Akku vorhanden.",
         "data": {
-          "battery_charge": "Batterie Lade-Energie (kWh) – Mehrfachauswahl möglich",
-          "battery_discharge": "Batterie Entlade-Energie (kWh) – Mehrfachauswahl möglich"
+          "battery_net": "A) Batterie Netto-Energie (Wh/kWh, +Laden/−Entladen) – Mehrfachauswahl",
+          "battery_charge": "B) Batterie Lade-Energie (kWh) – Mehrfachauswahl möglich",
+          "battery_discharge": "B) Batterie Entlade-Energie (kWh) – Mehrfachauswahl möglich"
         }
       }
     }

@@ -9,7 +9,7 @@ from homeassistant.helpers import selector
 from .const import (
     DOMAIN,
     CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C,
-    CONF_SOLAR, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE,
+    CONF_SOLAR, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE, CONF_BATT_NET,
     CONF_METER_BASIS, CONF_PHASE_OFFSET,
 )
 
@@ -68,6 +68,8 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # ── Schritt 3: Batterie (optional) ────────────────────────────────────────
     async def async_step_battery(self, user_input=None):
         if user_input is not None:
+            if user_input.get(CONF_BATT_NET):
+                self._data[CONF_BATT_NET] = user_input[CONF_BATT_NET]
             if user_input.get(CONF_BATT_CHARGE):
                 self._data[CONF_BATT_CHARGE] = user_input[CONF_BATT_CHARGE]
             if user_input.get(CONF_BATT_DISCHARGE):
@@ -81,6 +83,7 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="battery",
             data_schema=vol.Schema({
+                vol.Optional(CONF_BATT_NET): _MULTI_ENERGY_SELECTOR,
                 vol.Optional(CONF_BATT_CHARGE): _MULTI_ENERGY_SELECTOR,
                 vol.Optional(CONF_BATT_DISCHARGE): _MULTI_ENERGY_SELECTOR,
             }),

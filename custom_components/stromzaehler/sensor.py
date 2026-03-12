@@ -17,7 +17,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from .const import (
     DOMAIN,
     CONF_PHASE_A, CONF_PHASE_B, CONF_PHASE_C,
-    CONF_SOLAR, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE,
+    CONF_SOLAR, CONF_BATT_CHARGE, CONF_BATT_DISCHARGE, CONF_BATT_NET,
     CONF_METER_BASIS, CONF_PHASE_OFFSET,
 )
 
@@ -25,14 +25,17 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _val(hass: HomeAssistant, entity_id: str | None) -> float:
-    """Sicherer float-Wert aus Entity-State."""
+    """Sicherer float-Wert aus Entity-State. Wh wird automatisch in kWh umgerechnet."""
     if not entity_id:
         return 0.0
     state = hass.states.get(entity_id)
     if state is None or state.state in ("unknown", "unavailable", ""):
         return 0.0
     try:
-        return float(state.state)
+        v = float(state.state)
+        if state.attributes.get("unit_of_measurement") == "Wh":
+            v /= 1000.0
+        return v
     except (ValueError, TypeError):
         return 0.0
 
@@ -63,7 +66,11 @@ async def async_setup_entry(
         sensors.append(SolarEigenverbrauchSensor(entry))
         sensors.append(EingespartSensor(entry))
 
-    if entry.data.get(CONF_BATT_CHARGE) and entry.data.get(CONF_BATT_DISCHARGE):
+    has_batt = (
+        (entry.data.get(CONF_BATT_CHARGE) and entry.data.get(CONF_BATT_DISCHARGE))
+        or entry.data.get(CONF_BATT_NET)
+    )
+    if has_batt:
         sensors.append(BatterieEigenverbrauchSensor(entry))
 
     async_add_entities(sensors)
@@ -220,7 +227,7 @@ class EingespartSensor(StromzaehlerBaseSensor):
 
     def _tracked_entities(self) -> list[str]:
         entities = super()._tracked_entities()
-        for key in (CONF_SOLAR, CONF_BATT_DISCHARGE):
+        for key in (CONF_SOLAR, CONF_BATT_DISCHARGE, CONF_BATT_NET):
             val = self._entry.data.get(key)
             if not val:
                 continue
@@ -235,8 +242,14 @@ class EingespartSensor(StromzaehlerBaseSensor):
         solar = _val(self.hass, self._entry.data.get(CONF_SOLAR))
         a, b, c = self._einspeisung()
         eigenverbrauch = max(solar - (a + b + c), 0.0)
-        batt = _val_list(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
-        return round(eigenverbrauch + batt, 3)
+        # Entladung aus Netto- oder separatem Sensor
+        net_ids = self._entry.data.get(CONF_BATT_NET)
+        if net_ids:
+            net = _val_list(self.hass, net_ids)
+            batt_discharge = max(-net, 0.0)
+        else:
+            batt_discharge = _val_list(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
+        return round(eigenverbrauch + batt_discharge, 3)
 
 
 class BatterieEigenverbrauchSensor(StromzaehlerBaseSensor):
@@ -247,6 +260,14 @@ class BatterieEigenverbrauchSensor(StromzaehlerBaseSensor):
 
     def _tracked_entities(self) -> list[str]:
         entities = []
+        # Netto-Sensoren (+ Laden, − Entladen)
+        net = self._entry.data.get(CONF_BATT_NET)
+        if net:
+            if isinstance(net, list):
+                entities.extend(net)
+            else:
+                entities.append(net)
+        # Separate Lade/Entlade-Sensoren
         for key in (CONF_BATT_CHARGE, CONF_BATT_DISCHARGE):
             val = self._entry.data.get(key)
             if not val:
@@ -257,8 +278,18 @@ class BatterieEigenverbrauchSensor(StromzaehlerBaseSensor):
                 entities.append(val)
         return entities
 
-    @property
-    def native_value(self) -> float:
+    def _batt_charge_discharge(self) -> tuple[float, float]:
+        """Gibt (Ladung, Entladung) in kWh zurück – aus Netto- oder separaten Sensoren."""
+        net_ids = self._entry.data.get(CONF_BATT_NET)
+        if net_ids:
+            # Netto: positive Werte = Laden, negative = Entladen
+            net = _val_list(self.hass, net_ids)
+            return (max(net, 0.0), max(-net, 0.0))
         charge    = _val_list(self.hass, self._entry.data.get(CONF_BATT_CHARGE))
         discharge = _val_list(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
+        return (charge, discharge)
+
+    @property
+    def native_value(self) -> float:
+        charge, discharge = self._batt_charge_discharge()
         return round(max(discharge - charge, 0.0), 3)
