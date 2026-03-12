@@ -1,41 +1,37 @@
 type: vertical-stack
 cards:
-  # ── Zählerstand & Jahresverbrauch ──────────────────────────────────────────
-  - type: entities
+  - type: glance
     title: "Stromzähler"
-    icon: mdi:counter
+    show_name: true
+    show_icon: true
+    show_state: true
     entities:
       - entity: sensor.zahlerstand_aktuell
-        name: "Aktueller Zählerstand"
+        name: "Zählerstand"
         icon: mdi:counter
       - entity: sensor.jahresverbrauch_bezug
-        name: "Jahresverbrauch (Bezug)"
+        name: "Jahresverbrauch"
         icon: mdi:transmission-tower-import
-      - type: divider
-      - entity: input_number.stromzaehler_basis
-        name: "Neuen Zählerstand eintragen (kWh)"
-        icon: mdi:pencil
-
-  # ── Solar & Einspeisung ────────────────────────────────────────────────────
-  - type: entities
-    title: "Solar & Einspeisung"
-    icon: mdi:solar-power
-    entities:
       - entity: sensor.einspeisung_gesamt
-        name: "Eingespeist ins Netz"
+        name: "Einspeisung"
         icon: mdi:transmission-tower-export
+
+  - type: glance
+    title: "Solar & Ersparnis"
+    show_name: true
+    show_icon: true
+    show_state: true
+    entities:
       - entity: sensor.solar_eigenverbrauch
-        name: "Solar Eigenverbrauch"
+        name: "Solar EV"
         icon: mdi:solar-power
       - entity: sensor.batterie_eigenverbrauch
-        name: "Batterie Eigenverbrauch"
+        name: "Batterie EV"
         icon: mdi:battery-charging
-      - type: divider
       - entity: sensor.eingespart_gesamt
-        name: "Eingespart gesamt"
+        name: "Eingespart"
         icon: mdi:piggy-bank
 
-  # ── Verlauf ────────────────────────────────────────────────────────────────
   - type: statistics-graph
     title: "Monatsverlauf"
     entities:
