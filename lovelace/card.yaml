@@ -1,45 +1,79 @@
+# ══════════════════════════════════════════════════════════════════
+# VIRTUELLER STROMZÄHLER – Einzelne Karte
+# ══════════════════════════════════════════════════════════════════
+#
+# EINFÜGEN ALS MANUELLE KARTE:
+#   Dashboard → Bearbeiten (Stift) → Karte hinzufügen → Manuell
+#   → diesen gesamten Inhalt einfügen → Speichern
+#
+# SENSOR-NAMEN ANPASSEN (falls nötig):
+#   Die Integration legt Sensoren automatisch an. Standardmäßig
+#   heißen sie wie unten angegeben. Bei mehreren Instanzen kann
+#   HA eine Zahl anhängen (z.B. sensor.zahlerstand_aktuell_2).
+#   In dem Fall die Entity-IDs unten entsprechend ändern.
+#
+# WELCHER SENSOR ZEIGT WAS:
+#   sensor.zahlerstand_aktuell     → Aktueller Zählerstand (kWh)
+#   sensor.jahresverbrauch_bezug   → Bezug seit letztem Setup
+#   sensor.einspeisung_gesamt      → Einspeisung ins Netz (kWh)
+#   sensor.solar_eigenverbrauch    → Solar selbst verbraucht (kWh)
+#   sensor.batterie_eigenverbrauch → Batterie Eigenverbrauch (kWh)
+#   sensor.eingespart_gesamt       → Gesamt eingespart (kWh)
+#
+# ══════════════════════════════════════════════════════════════════
+
 type: vertical-stack
 cards:
+  # ── Zählerstand & Jahresverbrauch ──────────────────────────────
+  # Zeigt den aktuellen Zählerstand und den Jahresverbrauch.
+  # sensor.zahlerstand_aktuell = Startwert + Bezug seit Setup
+  # sensor.jahresverbrauch_bezug = nur Bezug seit letztem Update
   - type: glance
     title: "Stromzähler"
     show_name: true
     show_icon: true
     show_state: true
     entities:
-      - entity: sensor.zahlerstand_aktuell
+      - entity: sensor.zahlerstand_aktuell       # ← ggf. anpassen
         name: "Zählerstand"
         icon: mdi:counter
-      - entity: sensor.jahresverbrauch_bezug
+      - entity: sensor.jahresverbrauch_bezug      # ← ggf. anpassen
         name: "Jahresverbrauch"
         icon: mdi:transmission-tower-import
-      - entity: sensor.einspeisung_gesamt
+      - entity: sensor.einspeisung_gesamt         # ← ggf. anpassen
         name: "Einspeisung"
         icon: mdi:transmission-tower-export
 
+  # ── Solar & Ersparnis ───────────────────────────────────────────
+  # Nur sinnvoll wenn Solar und/oder Batterie in der Integration
+  # konfiguriert wurde. Sonst zeigen die Sensoren 0.
   - type: glance
     title: "Solar & Ersparnis"
     show_name: true
     show_icon: true
     show_state: true
     entities:
-      - entity: sensor.solar_eigenverbrauch
+      - entity: sensor.solar_eigenverbrauch       # ← ggf. anpassen
         name: "Solar EV"
         icon: mdi:solar-power
-      - entity: sensor.batterie_eigenverbrauch
+      - entity: sensor.batterie_eigenverbrauch    # ← ggf. anpassen
         name: "Batterie EV"
         icon: mdi:battery-charging
-      - entity: sensor.eingespart_gesamt
+      - entity: sensor.eingespart_gesamt          # ← ggf. anpassen
         name: "Eingespart"
         icon: mdi:piggy-bank
 
+  # ── Monatsverlauf ───────────────────────────────────────────────
+  # Balkendiagramm mit Monatswerten. Benötigt Langzeit-Statistiken
+  # (HA speichert diese automatisch nach einigen Stunden).
   - type: statistics-graph
     title: "Monatsverlauf"
     entities:
-      - entity: sensor.jahresverbrauch_bezug
+      - entity: sensor.jahresverbrauch_bezug      # ← ggf. anpassen
         name: "Bezug"
-      - entity: sensor.einspeisung_gesamt
+      - entity: sensor.einspeisung_gesamt         # ← ggf. anpassen
         name: "Einspeisung"
-      - entity: sensor.eingespart_gesamt
+      - entity: sensor.eingespart_gesamt          # ← ggf. anpassen
         name: "Eingespart"
     period:
       calendar:
