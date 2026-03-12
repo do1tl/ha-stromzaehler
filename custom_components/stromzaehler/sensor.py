@@ -37,6 +37,15 @@ def _val(hass: HomeAssistant, entity_id: str | None) -> float:
         return 0.0
 
 
+def _val_list(hass: HomeAssistant, entity_ids: list | str | None) -> float:
+    """Summe über eine Liste von Entity-IDs (oder einzelne ID für Rückwärtskompatibilität)."""
+    if not entity_ids:
+        return 0.0
+    if isinstance(entity_ids, str):
+        return _val(hass, entity_ids)
+    return sum(_val(hass, eid) for eid in entity_ids)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -212,8 +221,13 @@ class EingespartSensor(StromzaehlerBaseSensor):
     def _tracked_entities(self) -> list[str]:
         entities = super()._tracked_entities()
         for key in (CONF_SOLAR, CONF_BATT_DISCHARGE):
-            if self._entry.data.get(key):
-                entities.append(self._entry.data[key])
+            val = self._entry.data.get(key)
+            if not val:
+                continue
+            if isinstance(val, list):
+                entities.extend(val)
+            else:
+                entities.append(val)
         return entities
 
     @property
@@ -221,7 +235,7 @@ class EingespartSensor(StromzaehlerBaseSensor):
         solar = _val(self.hass, self._entry.data.get(CONF_SOLAR))
         a, b, c = self._einspeisung()
         eigenverbrauch = max(solar - (a + b + c), 0.0)
-        batt = _val(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
+        batt = _val_list(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
         return round(eigenverbrauch + batt, 3)
 
 
@@ -234,12 +248,17 @@ class BatterieEigenverbrauchSensor(StromzaehlerBaseSensor):
     def _tracked_entities(self) -> list[str]:
         entities = []
         for key in (CONF_BATT_CHARGE, CONF_BATT_DISCHARGE):
-            if self._entry.data.get(key):
-                entities.append(self._entry.data[key])
+            val = self._entry.data.get(key)
+            if not val:
+                continue
+            if isinstance(val, list):
+                entities.extend(val)
+            else:
+                entities.append(val)
         return entities
 
     @property
     def native_value(self) -> float:
-        charge    = _val(self.hass, self._entry.data.get(CONF_BATT_CHARGE))
-        discharge = _val(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
+        charge    = _val_list(self.hass, self._entry.data.get(CONF_BATT_CHARGE))
+        discharge = _val_list(self.hass, self._entry.data.get(CONF_BATT_DISCHARGE))
         return round(max(discharge - charge, 0.0), 3)

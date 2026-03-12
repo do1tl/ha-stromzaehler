@@ -16,6 +16,9 @@ from .const import (
 _ENERGY_SELECTOR = selector.EntitySelector(
     selector.EntitySelectorConfig(domain="sensor", device_class="energy")
 )
+_MULTI_ENERGY_SELECTOR = selector.EntitySelector(
+    selector.EntitySelectorConfig(domain="sensor", device_class="energy", multiple=True)
+)
 _NUMBER_SELECTOR = selector.NumberSelector(
     selector.NumberSelectorConfig(
         min=0, max=999999, step=1,
@@ -78,8 +81,8 @@ class StromzaehlerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="battery",
             data_schema=vol.Schema({
-                vol.Optional(CONF_BATT_CHARGE): _ENERGY_SELECTOR,
-                vol.Optional(CONF_BATT_DISCHARGE): _ENERGY_SELECTOR,
+                vol.Optional(CONF_BATT_CHARGE): _MULTI_ENERGY_SELECTOR,
+                vol.Optional(CONF_BATT_DISCHARGE): _MULTI_ENERGY_SELECTOR,
             }),
         )
 
